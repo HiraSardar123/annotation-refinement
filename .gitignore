@@ -1,0 +1,65 @@
+# ---------------------------------------------------------------------------
+# Confidential data and everything generated from it
+# ---------------------------------------------------------------------------
+data/
+train/
+test/
+final/
+edited/
+edited_in_progress/
+*_in_progress/
+outputs/
+outputs_*/
+refined/
+refined_*/
+overlays/
+
+# data files anywhere, in case a data folder ends up somewhere else
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.tif
+*.tiff
+*.cine
+*.json
+*.iap
+*.iap.*
+*.backup
+*.csv
+.project_backups/
+class_rgb_mapping.txt
+
+# ---------------------------------------------------------------------------
+# Large / downloaded / installed (see README section 2)
+# ---------------------------------------------------------------------------
+*.pt
+*.pth
+*.ckpt
+third_party/
+.venv/
+venv/
+sam2/
+
+# ---------------------------------------------------------------------------
+# Old experiments, not used by the pipeline or the review tool
+# ---------------------------------------------------------------------------
+tried_code/
+tests/
+refine_boundaries.py
+evaluate_refinement.py
+README_STEP_BY_STEP.md
+
+# ---------------------------------------------------------------------------
+# Python / editor / OS
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db
+desktop.ini

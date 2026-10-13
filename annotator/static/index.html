@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Weld Annotator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand" title="Weld Annotator">Weld Annotator</div>
+  <div class="nav">
+    <select id="expSelect" title="Experiment folder (reviewed / total)"></select>
+    <button id="prevBtn" class="icon" title="Previous image (←)">◀</button>
+    <select id="imgSelect" title="Image: ✓ reviewed, ○ not reviewed yet"></select>
+    <button id="nextBtn" class="icon" title="Next image (→)">▶</button>
+    <label class="chip" title="Show only folders you have started but not finished, and only their images that are not reviewed yet">
+      <input type="checkbox" id="onlyLeft"> Only what's left</label>
+    <div class="pill" id="progress" title=""><span class="pbar"><span id="pfill"></span></span><span id="ptext"></span></div>
+  </div>
+  <div class="spacer"></div>
+  <span id="saveState" class="savestate"></span>
+  <div class="btns">
+    <button id="undoBtn" class="icon" title="Undo (Ctrl+Z)">↶</button>
+    <button id="redoBtn" class="icon" title="Redo (Ctrl+Y)">↷</button>
+    <span class="sep"></span>
+    <button id="nextOpenBtn" title="Jump to the next image that is not reviewed yet (this folder first)">⏭ Unreviewed</button>
+    <button id="saveAllBtn" class="savebtn" title="Save all in folder: mark every remaining image of this folder reviewed, each saved as it currently is">Save all</button>
+    <button id="saveBtn" class="savebtn" title="Save this image and mark it reviewed (Ctrl+S) — also when you changed nothing">Save</button>
+    <button id="saveNextBtn" class="primary savebtn" title="Save this image as reviewed and open the next one (Ctrl+Enter)">Save &amp; next ▶</button>
+    <button id="helpBtn" class="icon" title="How to use">?</button>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="toolbar">
+    <section class="block">
+      <h3>Tools</h3>
+      <div class="tools" id="tools">
+        <button data-tool="select"><span class="ti">➤</span>Inspect<kbd>V</kbd></button>
+        <button data-tool="pan"><span class="ti">✥</span>Pan<kbd>Space</kbd></button>
+        <h4>Fix my edit</h4>
+        <button data-tool="brush"><span class="ti">✎</span>Brush<kbd>B</kbd></button>
+        <button data-tool="erase"><span class="ti">⌫</span>Eraser<kbd>E</kbd></button>
+        <button data-tool="box"><span class="ti">▣</span>Fill gap in box<kbd>G</kbd></button>
+        <button data-tool="reclass"><span class="ti">⇄</span>Change class in box<kbd>R</kbd></button>
+        <h4>Copy into my edit</h4>
+        <button data-tool="human"><span class="ti">⇦</span>Copy from human<kbd>H</kbd></button>
+        <button data-tool="sam"><span class="ti">↺</span>Copy from SAM<kbd>S</kbd></button>
+      </div>
+    </section>
+
+    <section class="block" id="optBlock">
+      <h3>Tool options</h3>
+      <div id="classRow">
+        <div class="label" id="classLabel">Class</div>
+        <div class="chips" id="classPick"></div>
+      </div>
+      <label id="fromRow" class="stack">Change pixels of
+        <select id="fromSelect"></select></label>
+      <label id="sizeRow" class="slider">Size <input id="brushSize" type="range" min="1" max="40" value="6"><span id="brushVal">6</span></label>
+      <label id="overRow" class="check"><input type="checkbox" id="paintOver" checked> Paint over other objects</label>
+    </section>
+
+    <div class="hint" id="toolHint"></div>
+
+    <section class="block view-block">
+      <h3>View</h3>
+      <div class="seg" id="viewSeg">
+        <button data-view="photo" title="The camera image only, no annotation (1)">Photo</button>
+        <button data-view="outline" title="Photo with outlines (2)">Outline</button>
+        <button data-view="overlay" title="Coloured mask over the photo (3)">Overlay</button>
+        <button data-view="mask" title="The RGB mask exactly as saved (4)">Mask</button>
+      </div>
+      <label class="slider" id="opacityRow" title="How strongly the mask colours cover the photo">Mask opacity <input id="opacity" type="range" min="10" max="100" value="60"></label>
+      <label class="check" title="Draw the human outlines in white on My edit (O)">
+        <input type="checkbox" id="compare"> Human outline on my edit <span class="white-sw"></span></label>
+      <label class="check" id="extraRow" title="Objects that are in the COCO JSON but not in the human RGB mask">
+        <input type="checkbox" id="showExtra"> Objects only in the JSON <span class="muted" id="extraCount"></span></label>
+      <h4>Image <span class="muted">(display only)</span></h4>
+      <label class="slider adj" title="Brightness of the camera image">Brightness <input id="adjBright" type="range" min="-100" max="100" value="0"><span id="adjBrightVal">0</span></label>
+      <label class="slider adj" title="Global contrast of the camera image">Contrast <input id="adjContrast" type="range" min="-100" max="100" value="0"><span id="adjContrastVal">0</span></label>
+      <label class="slider adj" title="Local contrast: brings out detail in dim or glaring areas (e.g. the arc glow around the molten tip)">Local contrast <input id="adjLocal" type="range" min="0" max="100" value="0"><span id="adjLocalVal">0</span></label>
+      <button id="adjReset" class="wide" title="Brightness, contrast and local contrast back to 0">Reset image to default</button>
+      <button id="fitBtn" class="wide" title="Fit to window (F)">Fit to window <kbd>F</kbd></button>
+    </section>
+
+  </nav>
+
+  <main class="views">
+    <section class="view">
+      <div class="vhead">
+        <div><b>Human annotation</b> <span class="tag">reference · read-only</span></div>
+        <div class="vsub" id="humanSub"></div>
+      </div>
+      <div class="canvasWrap"><canvas id="cvLeft"></canvas></div>
+    </section>
+    <section class="view edit">
+      <div class="vhead">
+        <div><b>My edit</b> <span class="tag edit">you edit this side</span></div>
+        <div class="vsub" id="editSub"></div>
+      </div>
+      <div class="canvasWrap"><canvas id="cvRight"></canvas></div>
+    </section>
+    <div class="legend" id="legend"></div>
+  </main>
+
+  <aside class="objects">
+    <div id="selCard" class="card"></div>
+    <div class="tabs" id="tabs">
+      <button data-tab="result">My edit</button>
+      <button data-tab="human">Human</button>
+      <button data-tab="conflicts">Overlaps</button>
+    </div>
+    <div id="list" class="list"></div>
+  </aside>
+</div>
+
+<footer><span id="status">Loading…</span><span id="saveTo" class="saveto"></span></footer>
+
+<div id="gate" class="modal" hidden>
+  <div class="modal-box">
+    <h2 id="gateTitle"></h2>
+    <p id="gateText"></p>
+    <div id="gateList" class="gate-list"></div>
+    <div class="gate-btns">
+      <button id="gateFirst" class="primary">Go to the first unreviewed image</button>
+      <button id="gateSaveAll">Save all as they are</button>
+      <button id="gateStay">Stay here</button>
+    </div>
+  </div>
+</div>
+
+<div id="help" class="modal" hidden>
+  <div class="modal-box">
+    <h2>How to use</h2>
+    <ol>
+      <li><b>Left</b> is the human annotation, exactly as in the <i>rgb_masks</i> of train / test. It is only a reference.</li>
+      <li><b>Right ("My edit")</b> is what gets saved. It starts from the SAM-refined masks (<i>final\spatter_refined</i>), or from your last save.</li>
+      <li><b>Inspect (V)</b>: click an object in either image. Its card appears on the right: change its class, replace it with the human or SAM version, or delete it. Its match on the other side is highlighted.</li>
+      <li><b>Fix</b> with the tools on the left. They always work on <b>My edit</b>. The grey box under the tools says what the active tool does.</li>
+      <li><b>Save &amp; next ▶</b> (Ctrl+Enter) marks the image reviewed and opens the next one -- use it on every image, also when you changed nothing. Only saved images count as reviewed; moving on with ▶ or the arrow keys does <b>not</b> save. <b>⏭ Next unreviewed</b> jumps to any image you skipped. Images go to <i>edited_in_progress</i>. As soon as <b>every</b> image of an experiment folder is reviewed, that folder is moved to <i>edited</i>. Tick <b>Only what's left</b> to see just the unreviewed images of folders you have started. Nothing is written into train, test or final. ✓ marks reviewed images and complete folders.</li>
+    </ol>
+    <p class="muted">Mouse wheel zooms, right-drag or Space pans, F fits. 1 / 2 / 3 / 4 switch the view (Photo / Outline / Overlay / Mask). [ and ] change the brush size. Ctrl+Z / Ctrl+Y undo and redo. ← → change image. Esc clears the selection.</p>
+    <button id="helpClose" class="primary">Got it</button>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

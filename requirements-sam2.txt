@@ -1,0 +1,6 @@
+-e ./third_party/sam2
+torch
+torchvision
+opencv-python
+numpy
+pillow
